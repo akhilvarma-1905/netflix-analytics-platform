@@ -194,14 +194,15 @@ def load_postgres_data():
 
 # Attempt to load data with fallback
 is_fallback = False
+csv_local_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "netflix_psql.csv")
 if db_conn is None:
     is_fallback = True
-    df_data = load_fallback_csv(r"C:\Users\ASUS\Downloads\netflix_psql.csv")
+    df_data = load_fallback_csv(csv_local_path)
 else:
     df_data, is_fallback = load_postgres_data()
     if is_fallback or df_data.empty:
         is_fallback = True
-        df_data = load_fallback_csv(r"C:\Users\ASUS\Downloads\netflix_psql.csv")
+        df_data = load_fallback_csv(csv_local_path)
 
 if "is_db_fallback" not in st.session_state:
     st.session_state.is_db_fallback = is_fallback
@@ -281,7 +282,7 @@ if not st.session_state.get("zoho_fullscreen", False):
             <div style="display: flex; align-items: center; gap: 10px; background: rgba(229, 9, 20, 0.12); border: 1px solid rgba(229, 9, 20, 0.4); padding: 12px 18px; border-radius: 12px; margin-top: 10px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(229, 9, 20, 0.15);">
                 <span style="font-size: 18px;">⚠️</span>
                 <div style="font-size: 13.5px; color: #f5f5f7; font-family: 'Inter', sans-serif; line-height: 1.4;">
-                    <strong style="color: #ff3e4e; font-family: 'Orbitron', sans-serif;">DATABASE OFFLINE:</strong> Running in local fallback mode. Active dataset loaded from <code>C:\\Users\\ASUS\\Downloads\\netflix_psql.csv</code>.
+                    <strong style="color: #ff3e4e; font-family: 'Orbitron', sans-serif;">DATABASE OFFLINE:</strong> Running in local fallback mode. Active dataset loaded from <code>netflix_psql.csv</code>.
                 </div>
             </div>
             """,
