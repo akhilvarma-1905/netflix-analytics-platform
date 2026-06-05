@@ -126,7 +126,9 @@ def generate_neural_response(db_conn, question):
     if db_conn is None:
         return (
             "🤖 **Netflix AI Recommendation Assistant**\n\n"
-            "Catalog database is offline. Please reload the app and try again."
+            "⚠️ **Live Database Query Engine Offline**\n\n"
+            "The PostgreSQL database is currently offline. The AI Assistant query repository is disabled in offline mode. "
+            "However, you can still view the full platform analytics, metrics, and recommendations utilizing the loaded fallback dataset."
         )
 
     try:

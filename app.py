@@ -135,12 +135,44 @@ def init_db(host, user, password, db_name, port=5432):
 
 db_conn = init_db(db_host, db_user, db_pass, db_db, db_port)
 
-# ------------------ DATA LOADING (CACHED FROM POSTGRESQL) ------------------
+# ------------------ DATA LOADING (CACHED FROM POSTGRESQL / CSV FALLBACK) ------------------
+def load_fallback_csv(csv_path):
+    try:
+        if os.path.exists(csv_path):
+            df = pd.read_csv(csv_path)
+            
+            # Map column names if they differ
+            if "cast_members" in df.columns and "cast" not in df.columns:
+                df = df.rename(columns={"cast_members": "cast"})
+            elif "cast" in df.columns and "cast_members" not in df.columns:
+                df["cast_members"] = df["cast"]
+                
+            required_cols = ["show_id", "type", "title", "director", "cast", "country", "date_added", "release_year", "rating", "duration", "listed_in", "description", "year_added"]
+            for col in required_cols:
+                if col not in df.columns:
+                    df[col] = "Unknown"
+                    
+            df['director'] = df['director'].fillna('Unknown')
+            df['cast'] = df['cast'].fillna('Unknown')
+            df['country'] = df['country'].fillna('Unknown')
+            df['date_added'] = df['date_added'].fillna('Unknown')
+            df['rating'] = df['rating'].fillna('TV-MA')
+            df['duration'] = df['duration'].fillna('Unknown')
+            df['year_added'] = df['year_added'].fillna(2021)
+            try:
+                df['year_added'] = df['year_added'].astype(int)
+            except Exception:
+                pass
+            return df[required_cols]
+        else:
+            st.error(f"Fallback CSV file not found at: {csv_path}")
+            return pd.DataFrame()
+    except Exception as e:
+        st.error(f"Failed to load fallback CSV: {str(e)}")
+        return pd.DataFrame()
+
 @st.cache_data(ttl=2)
 def load_postgres_data():
-    if db_conn is None:
-        st.error("Cannot load dataset because database connection is offline.")
-        return pd.DataFrame()
     try:
         cursor = db_conn.cursor()
         cursor.execute('SELECT show_id, type, title, director, cast_members AS "cast", country, date_added, release_year, rating, duration, listed_in, description, year_added FROM netflix')
@@ -149,20 +181,33 @@ def load_postgres_data():
         cursor.close()
         
         df = pd.DataFrame(rows, columns=columns)
-        # Clean text and fill nulls
         df['director'] = df['director'].fillna('Unknown')
         df['cast'] = df['cast'].fillna('Unknown')
         df['country'] = df['country'].fillna('Unknown')
         df['date_added'] = df['date_added'].fillna('Unknown')
-        df['rating'] = df['rating'].fillna('TV-MA')  # sensible default
+        df['rating'] = df['rating'].fillna('TV-MA')
         df['duration'] = df['duration'].fillna('Unknown')
         df['year_added'] = df['year_added'].fillna(2021).astype(int)
-        return df
+        return df, False
     except Exception as e:
-        st.error(f"Failed to fetch data from PostgreSQL: {str(e)}")
-        return pd.DataFrame()
+        return pd.DataFrame(), True
 
-df_data = load_postgres_data()
+# Attempt to load data with fallback
+is_fallback = False
+if db_conn is None:
+    is_fallback = True
+    df_data = load_fallback_csv(r"C:\Users\ASUS\Downloads\netflix_psql.csv")
+else:
+    df_data, is_fallback = load_postgres_data()
+    if is_fallback or df_data.empty:
+        is_fallback = True
+        df_data = load_fallback_csv(r"C:\Users\ASUS\Downloads\netflix_psql.csv")
+
+if "is_db_fallback" not in st.session_state:
+    st.session_state.is_db_fallback = is_fallback
+else:
+    st.session_state.is_db_fallback = is_fallback
+
 
 # ------------------ IMAGE HELPER ------------------
 def get_image_as_base64(file_path):
@@ -228,7 +273,23 @@ if not st.session_state.get("zoho_fullscreen", False) and st.session_state.page 
     """
     st.markdown(navbar_html, unsafe_allow_html=True)
 
+# ------------------ DATABASE FALLBACK STATUS BANNER ------------------
+if not st.session_state.get("zoho_fullscreen", False):
+    if db_conn is None or st.session_state.get("is_db_fallback", False):
+        st.markdown(
+            """
+            <div style="display: flex; align-items: center; gap: 10px; background: rgba(229, 9, 20, 0.12); border: 1px solid rgba(229, 9, 20, 0.4); padding: 12px 18px; border-radius: 12px; margin-top: 10px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(229, 9, 20, 0.15);">
+                <span style="font-size: 18px;">⚠️</span>
+                <div style="font-size: 13.5px; color: #f5f5f7; font-family: 'Inter', sans-serif; line-height: 1.4;">
+                    <strong style="color: #ff3e4e; font-family: 'Orbitron', sans-serif;">DATABASE OFFLINE:</strong> Running in local fallback mode. Active dataset loaded from <code>C:\\Users\\ASUS\\Downloads\\netflix_psql.csv</code>.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
 # ------------------ MAIN ROUTER CONTENT RENDER ------------------
+
 
 if st.session_state.page == "Home":
     # Background Image CSS Injection (using Base64 for local images)
