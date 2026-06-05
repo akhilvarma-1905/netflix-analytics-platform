@@ -130,7 +130,6 @@ def init_db(host, user, password, db_name, port=5432):
         
         return conn
     except Exception as e:
-        st.error(f"PostgreSQL Database / Schema Setup Failed: {str(e)}")
         return None
 
 db_conn = init_db(db_host, db_user, db_pass, db_db, db_port)
@@ -273,21 +272,6 @@ if not st.session_state.get("zoho_fullscreen", False) and st.session_state.page 
     </div>
     """
     st.markdown(navbar_html, unsafe_allow_html=True)
-
-# ------------------ DATABASE FALLBACK STATUS BANNER ------------------
-if not st.session_state.get("zoho_fullscreen", False):
-    if db_conn is None or st.session_state.get("is_db_fallback", False):
-        st.markdown(
-            """
-            <div style="display: flex; align-items: center; gap: 10px; background: rgba(229, 9, 20, 0.12); border: 1px solid rgba(229, 9, 20, 0.4); padding: 12px 18px; border-radius: 12px; margin-top: 10px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(229, 9, 20, 0.15);">
-                <span style="font-size: 18px;">⚠️</span>
-                <div style="font-size: 13.5px; color: #f5f5f7; font-family: 'Inter', sans-serif; line-height: 1.4;">
-                    <strong style="color: #ff3e4e; font-family: 'Orbitron', sans-serif;">DATABASE OFFLINE:</strong> Running in local fallback mode. Active dataset loaded from <code>netflix_psql.csv</code>.
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
 
 # ------------------ MAIN ROUTER CONTENT RENDER ------------------
 
